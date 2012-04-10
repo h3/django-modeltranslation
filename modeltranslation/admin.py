@@ -1,12 +1,18 @@
 # -*- coding: utf-8 -*-
 from copy import copy
 
+from django import forms, template
+from django.conf import settings
 from django.contrib import admin
 from django.contrib.contenttypes import generic
 
-from modeltranslation import settings
+from modeltranslation.settings import *
 from modeltranslation.translator import translator
 from modeltranslation.utils import get_translation_fields, build_localized_fieldname
+# Ensure that models are registered for translation before TranslationAdmin
+# runs. The import is supposed to resolve a race condition between model import
+# and translation registration in production (see issue 19).
+import modeltranslation.models
 
 
 class TranslationAdminBase(object):
@@ -38,8 +44,10 @@ class TranslationAdminBase(object):
             field.widget = copy(orig_formfield.widget)
             css_classes = field.widget.attrs.get('class', '').split(' ')
             css_classes.append('modeltranslation')
+            #css_classes.append('modeltranslation-field-%s__%s' % (orig_fieldname,
+                                                                  #db_field.language))
 
-            if db_field.language == settings.DEFAULT_LANGUAGE:
+            if db_field.language == DEFAULT_LANGUAGE:
                 # Add another css class to identify a default modeltranslation
                 # widget.
                 css_classes.append('modeltranslation-default')
@@ -71,13 +79,12 @@ class TranslationAdmin(admin.ModelAdmin, TranslationAdminBase):
                     fields_new[index:index + 1] = translation_fields
             self.fields = fields_new
 
-        # Simple policy: if the admin class already defines a fieldset, we
-        # leave it alone and assume the author has done whatever grouping for
-        # translated fields they desire:
         if self.fieldsets:
             fieldsets_new = list(self.fieldsets)
             for (name, dct) in self.fieldsets:
                 if 'fields' in dct:
+                    # TODO: Add support for grouped fieldsets
+                    #       (see issue 52 for details)
                     fields_new = list(dct['fields'])
                     for field in dct['fields']:
                         if field in trans_opts.fields:
@@ -86,36 +93,6 @@ class TranslationAdmin(admin.ModelAdmin, TranslationAdminBase):
                             fields_new[index:index + 1] = translation_fields
                     dct['fields'] = fields_new
             self.fieldsets = fieldsets_new
-        else:
-            # If there aren't any existing fieldsets, we'll automatically
-            # create one to group each translated field's localized fields:
-
-            non_translated_fields = [
-                f.name for f in self.opts.fields if (
-                    # The original translation field:
-                    f.name not in trans_opts.fields
-                    # The auto-generated fields for translations:
-                    and f.name not in trans_opts.localized_fieldnames_rev
-                    # Avoid including the primary key field:
-                    and f is not self.opts.auto_field
-                    # Avoid non-editable fields
-                    and f.editable
-                )
-            ]
-
-            self.fieldsets = [
-                ('', {'fields': non_translated_fields}),
-            ]
-
-            for orig_field, trans_fields in trans_opts.localized_fieldnames.items():
-                # Extract the original field's verbose_name for use as this
-                # fieldset's label - using ugettext_lazy in your model
-                # declaration can make that translatable:
-                label = self.model._meta.get_field(orig_field).verbose_name
-                self.fieldsets.append((label, {
-                    "fields": trans_fields,
-                    "classes": ("modeltranslations",)
-                }))
 
         if self.list_editable:
             editable_new = list(self.list_editable)
@@ -146,9 +123,11 @@ class TranslationAdmin(admin.ModelAdmin, TranslationAdminBase):
         # See issue 47 for details.
         trans_opts = translator.get_options_for_model(self.model)
         for k, v in trans_opts.localized_fieldnames.items():
-            default_lang_fieldname = build_localized_fieldname(k, settings.DEFAULT_LANGUAGE)
-            default_lang_fieldvalue = getattr(obj, default_lang_fieldname, "")
-            obj.__dict__[k] = default_lang_fieldvalue
+            if getattr(obj, k):
+                default_lang_fieldname = build_localized_fieldname(k, DEFAULT_LANGUAGE)
+                if not getattr(obj, default_lang_fieldname):
+                    # TODO: Handle null values
+                    setattr(obj, k, "")
         super(TranslationAdmin, self).save_model(request, obj, form, change)
 
     def formfield_for_dbfield(self, db_field, **kwargs):

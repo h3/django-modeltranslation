@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 from django.conf import settings
 from django.db import models
+from django.db.models import signals
 from django.db.models.base import ModelBase
+from django.utils.functional import curry
 
-from modeltranslation.fields import (TranslationFieldDescriptor,
+from modeltranslation.fields import (TranslationField,
+                                     TranslationFieldDescriptor,
                                      create_translation_field)
 from modeltranslation.utils import build_localized_fieldname
 
@@ -94,7 +97,6 @@ def delete_cache_fields(model):
     except AttributeError:
         pass
 
-
 class Translator(object):
     """
     A Translator object encapsulates an instance of a translator. Models are
@@ -165,12 +167,8 @@ class Translator(object):
             translation_opts.localized_fieldnames_rev = rev_dict
 
             # Delete all fields cache for related model (parent and children)
-            related_classes = tuple(model.__bases__) \
-                + tuple(model.__subclasses__())
-            for related_model in related_classes:
-                if related_model != models.Model \
-                    and issubclass(related_model, models.Model):
-                    delete_cache_fields(related_model)
+            for related_obj in model._meta.get_all_related_objects():
+                delete_cache_fields(related_obj.model)
 
         model_fallback_values =\
         getattr(translation_opts, 'fallback_values', None)

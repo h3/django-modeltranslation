@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
+from django.db import models
+from django.conf import settings
+from django.core.exceptions import ValidationError, ImproperlyConfigured
+from django.contrib.contenttypes.models import ContentType
 from django.utils.translation import get_language as _get_language
 from django.utils.functional import lazy
 
-from modeltranslation import settings
+from modeltranslation.settings import *
 
 
 def get_language():
@@ -11,16 +15,16 @@ def get_language():
     settings.LANGUAGES (Django does not seem to guarantee this for us).
     """
     lang = _get_language()
-    if lang not in settings.AVAILABLE_LANGUAGES and '-' in lang:
+    if lang not in AVAILABLE_LANGUAGES and '-' in lang:
         lang = lang.split('-')[0]
-    if lang in settings.AVAILABLE_LANGUAGES:
+    if lang in AVAILABLE_LANGUAGES:
         return lang
-    return settings.DEFAULT_LANGUAGE
+    return DEFAULT_LANGUAGE
 
 
 def get_translation_fields(field):
     """Returns a list of localized fieldnames for a given field."""
-    return [build_localized_fieldname(field, l) for l in settings.AVAILABLE_LANGUAGES]
+    return [build_localized_fieldname(field, l) for l in AVAILABLE_LANGUAGES]
 
 
 def build_localized_fieldname(field_name, lang):

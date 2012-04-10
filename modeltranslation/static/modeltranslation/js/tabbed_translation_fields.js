@@ -50,7 +50,6 @@ var google, django, gettext;
                 }
                 grouped_translations[name][lang] = el;
             });
-
             return grouped_translations;
         }
 
