@@ -5,6 +5,7 @@ from warnings import warn
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.db.models.fields import Field, CharField, TextField
+from django.db.models import FileField
 
 from modeltranslation.settings import *
 from modeltranslation.utils import (get_language,
@@ -28,11 +29,14 @@ def create_translation_field(model, field_name, lang):
     field = model._meta.get_field(field_name)
     cls_name = field.__class__.__name__
     # No subclass required for text-like fields
-    if not (isinstance(field, (CharField, TextField)) or\
+    if not (isinstance(field, (CharField, TextField, FileField)) or\
             cls_name in CUSTOM_FIELDS):
         raise ImproperlyConfigured('%s is not supported by '
                                    'modeltranslation.' % cls_name)
-    return TranslationField(translated_field=field, language=lang)
+    if isinstance(field, FileField):
+        return TranslationFileField(translated_field=field, language=lang)
+    else:
+        return TranslationField(translated_field=field, language=lang)
 
 
 class TranslationField(Field):
@@ -160,3 +164,6 @@ class TranslationFieldDescriptor(object):
         related subclasses.
         """
         return instance.__dict__[self.name]
+
+class TranslationFileField(TranslationField, FileField):
+    pass
