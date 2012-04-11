@@ -4,9 +4,12 @@ from django.db import models
 from django.db.models import signals
 from django.db.models.base import ModelBase
 from django.utils.functional import curry
+from django.db.models import FileField, ImageField
 
 from modeltranslation.fields import (TranslationField,
                                      TranslationFieldDescriptor,
+                                     TranslationImageFileDescriptor,
+                                     TranslationFileDescriptor,
                                      create_translation_field)
 from modeltranslation.utils import build_localized_fieldname
 
@@ -180,8 +183,17 @@ class Translator(object):
                 model_fallback_values.get(field_name, None)
             else:
                 field_fallback_value = model_fallback_values
-            setattr(model, field_name, TranslationFieldDescriptor(field_name,\
-                    fallback_value=field_fallback_value))
+            
+            field = model._meta.get_field(field_name)
+            if isinstance(field, ImageField):
+                setattr(model, field_name, TranslationImageFileDescriptor(field, field_name,\
+                        fallback_value=field_fallback_value))
+            elif isinstance(field, FileField):
+                setattr(model, field_name, TranslationFileDescriptor(field, field_name,\
+                        fallback_value=field_fallback_value))
+            else:
+                setattr(model, field_name, TranslationFieldDescriptor(field_name,\
+                        fallback_value=field_fallback_value))
 
         #signals.pre_init.connect(translated_model_initializing, sender=model,
                                  #weak=False)
