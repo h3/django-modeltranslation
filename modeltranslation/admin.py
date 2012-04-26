@@ -21,6 +21,9 @@ class TranslationAdminBase(object):
     """
     orig_was_required = {}
 
+    def __init__(self, *args, **kwargs):
+        super(TranslationAdminBase, self).__init__(*args, **kwargs)
+
     def patch_translation_field(self, db_field, field, **kwargs):
         trans_opts = translator.get_options_for_model(self.model)
 
@@ -116,6 +119,12 @@ class TranslationAdmin(admin.ModelAdmin, TranslationAdminBase):
                     prepopulated_fields_new[k] = tuple([translation_fields[0]])
             self.prepopulated_fields = prepopulated_fields_new
 
+        if self.exclude:
+            excluded_fields = [x for x in self.exclude]
+            for f in self.exclude:
+                excluded_fields = excluded_fields + get_translation_fields(f)
+            self.exclude = excluded_fields
+
     def save_model(self, request, obj, form, change):
         # Rule is: 3. Assigning a value to a translation field of the default language also
         # updates the original field.
@@ -138,7 +147,19 @@ class TranslationAdmin(admin.ModelAdmin, TranslationAdminBase):
         return field
 
 
-class TranslationTabularInline(admin.TabularInline, TranslationAdminBase):
+class InlineTranslationBase(TranslationAdminBase):
+    def __init__(self, *args, **kwargs):
+        super(InlineTranslationBase, self).__init__(*args, **kwargs)
+        trans_opts = translator.get_options_for_model(self.model)
+
+        if self.exclude:
+            excluded_fields = [x for x in self.exclude]
+            for f in self.exclude:
+                excluded_fields = excluded_fields + get_translation_fields(f)
+            self.exclude = excluded_fields
+
+
+class TranslationTabularInline(InlineTranslationBase, admin.TabularInline):
     def formfield_for_dbfield(self, db_field, **kwargs):
         # Call the baseclass function to get the formfield
         field = super(TranslationTabularInline,
@@ -147,7 +168,7 @@ class TranslationTabularInline(admin.TabularInline, TranslationAdminBase):
         return field
 
 
-class TranslationStackedInline(admin.StackedInline, TranslationAdminBase):
+class TranslationStackedInline(InlineTranslationBase, admin.StackedInline):
     def formfield_for_dbfield(self, db_field, **kwargs):
         # Call the baseclass function to get the formfield
         field = super(TranslationStackedInline,
@@ -156,8 +177,8 @@ class TranslationStackedInline(admin.StackedInline, TranslationAdminBase):
         return field
 
 
-class TranslationGenericTabularInline(generic.GenericTabularInline,
-                                      TranslationAdminBase):
+class TranslationGenericTabularInline(InlineTranslationBase,
+                                      generic.GenericTabularInline):
     def formfield_for_dbfield(self, db_field, **kwargs):
         # Call the baseclass function to get the formfield
         field = super(TranslationGenericTabularInline,
@@ -166,8 +187,8 @@ class TranslationGenericTabularInline(generic.GenericTabularInline,
         return field
 
 
-class TranslationGenericStackedInline(generic.GenericStackedInline,
-                                      TranslationAdminBase):
+class TranslationGenericStackedInline(InlineTranslationBase,
+                                      generic.GenericStackedInline):
     def formfield_for_dbfield(self, db_field, **kwargs):
         # Call the baseclass function to get the formfield
         field = super(TranslationGenericStackedInline,
