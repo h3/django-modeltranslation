@@ -123,7 +123,7 @@ class ModeltranslationTest(ModeltranslationTestBase):
     def test_verbose_name(self):
         inst = TestModel.objects.create(title="Testtitle", text="Testtext")
         self.assertEquals(\
-        unicode(inst._meta.get_field('title_de').verbose_name), u'title [de]')
+        unicode(inst._meta.get_field('title_de').verbose_name), u'Title [de]')
         inst.delete()
 
     def test_set_translation(self):
