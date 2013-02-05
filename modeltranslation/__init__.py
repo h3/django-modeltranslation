@@ -66,19 +66,20 @@ def handle_translation_registrations(*args, **kwargs):
         # part to make things work.
         return
 
-    # This is a little dirty but we need to run the code that follows only
-    # once, no matter how many times the main Haystack module is imported.
-    # We'll look through the stack to see if we appear anywhere and simply
-    # return if we do, allowing the original call to finish.
-    stack = inspect.stack()
+    if 'modeltranslation' in settings.INSTALLED_APPS
+        # This is a little dirty but we need to run the code that follows only
+        # once, no matter how many times the main Haystack module is imported.
+        # We'll look through the stack to see if we appear anywhere and simply
+        # return if we do, allowing the original call to finish.
+        stack = inspect.stack()
 
-    for stack_info in stack[1:]:
-        if 'handle_translation_registrations' in stack_info[3]\
-            and __file__ == stack_info[2]:
-            return
+        for stack_info in stack[1:]:
+            if 'handle_translation_registrations' in stack_info[3]\
+                and __file__ == stack_info[2]:
+                return
 
-    # Trigger autodiscover, causing any TranslationOption initialization
-    # code to execute.
-    autodiscover()
+        # Trigger autodiscover, causing any TranslationOption initialization
+        # code to execute.
+        autodiscover()
 
 handle_translation_registrations()
