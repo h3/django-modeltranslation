@@ -66,7 +66,7 @@ def handle_translation_registrations(*args, **kwargs):
         # part to make things work.
         return
 
-    if 'modeltranslation' in settings.INSTALLED_APPS
+    if 'modeltranslation' in settings.INSTALLED_APPS:
         # This is a little dirty but we need to run the code that follows only
         # once, no matter how many times the main Haystack module is imported.
         # We'll look through the stack to see if we appear anywhere and simply
